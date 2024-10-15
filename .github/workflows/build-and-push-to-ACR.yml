@@ -1,0 +1,68 @@
+name: Build and Push to ACR
+
+on:
+  push:
+    branches:
+      - dev  # Run when changes are pushed to the dev branch
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. Log in to Azure using the Azure login action
+    - name: Azure Login
+      uses: azure/login@v2.2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}  # Use Azure credentials stored in GitHub Secrets
+
+   # 3. Check if the Resource Group exists
+    - name: Check Resource Group
+      run: |
+        az group exists --name ${{ secrets.AZURE_RGname }} \
+        || (echo "Resource Group ${{ secrets.AZURE_RGname }} does not exist. Please deploy infrastructure first." && exit 1)
+
+    # 4. Check if the ACR exists
+    - name: Check ACR
+      run: |
+        az acr check-name --name ${{ secrets.AZURE_ACRname }} --query "nameAvailable" -o tsv \
+        && (echo "ACR ${{ secrets.AZURE_ACRname }} does not exist. Please deploy infrastructure first." && exit 1) \
+        || echo "ACR exists"
+
+    # 3. Log in to ACR using Docker
+    - name: Docker Login to ACR
+      run: |
+        az acr login --name ${{ secrets.AZURE_ACRname }}  # Replace with your ACR name
+
+    # 4. Build the Docker image
+    - name: Build Docker image
+      run: |
+        docker build -t owasp-security-shepherd:latest .
+
+    # 5. Tag the Docker image for ACR
+    - name: Tag Docker image for ACR
+      run: |
+        docker tag owasp-security-shepherd:latest ${{ secrets.AZURE_ACRname }}.azurecr.io/owasp-security-shepherd:latest
+
+    # 6. Push the Docker image to ACR
+    - name: Push Docker image to ACR
+      run: |
+        docker push ${{ secrets.AZURE_ACRname }}.azurecr.io/owasp-security-shepherd:latest  # Replace with your ACR name
+
+    # 7. Optionally - Deploy the container to Azure Container Instances or Apps
+    - name: Deploy to Azure (optional)
+      run: |
+        az container create \
+          --resource-group ${{ secrets.AZURE_RGname }} \
+          --name owaspSecurityShepherdContainer \
+          --image ${{ secrets.AZURE_ACRname }}.azurecr.io/owasp-security-shepherd:latest \
+          --cpu 1 \
+          --memory 1.5 \
+          --registry-login-server ${{ secrets.AZURE_ACRname }}.azurecr.io \
+          --registry-username $(az acr credential show --name ${{ secrets.AZURE_ACRname }} --query "username" --output tsv) \
+          --registry-password $(az acr credential show --name ${{ secrets.AZURE_ACRname }} --query "passwords[0].value" --output tsv) \
+          --os-type Linux

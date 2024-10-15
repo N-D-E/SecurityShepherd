@@ -1,0 +1,33 @@
+name: Deploy Azure Infrastructure
+
+on:
+  workflow_dispatch:  # Allows this workflow to be run manually from the GitHub Actions UI
+
+jobs:
+  deploy-to-infrastructure:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. Log in to Azure using the Azure login action
+    - name: Azure Login
+      uses: azure/login@v2.2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}  # Use Azure credentials stored in secrets  
+
+    # 3. Deploy ARM Template to Azure
+    - name: Deploy ARM Template
+      run: |
+        az deployment group create \
+          --resource-group ${{ secrets.AZURE_RGname }} \
+          --template-file infrastructue/azuredeploy.json \
+          --parameters infrastructure/@azuredeploy.parameters.json \
+          --verbose
+
+    # 4. Optionally - Verify deployment or perform post-deployment steps
+    - name: Verify Deployment
+      run: |
+        echo "Deployment completed"
