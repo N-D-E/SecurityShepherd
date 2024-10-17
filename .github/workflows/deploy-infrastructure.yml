@@ -49,7 +49,7 @@ jobs:
           az deployment group create \
             --name SecurityShepherdDeployment \
             --resource-group ${{ secrets.AZURE_RGname }} \
-            --template-file infrastructue/azuredeploy.json \
+            --template-file infrastructure/azuredeploy.json \
             --parameters infrastructure/@azuredeploy.parameters.json \
             --verbose
 

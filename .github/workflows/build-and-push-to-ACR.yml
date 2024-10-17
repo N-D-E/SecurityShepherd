@@ -3,7 +3,7 @@ name: Build and Push to ACR
 on:
   push:
     branches:
-      - dev  # Run when changes are pushed to the dev branch
+      - main  # Run when changes are pushed to the dev branch
 
 jobs:
   build-and-push:
