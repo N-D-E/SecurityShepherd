@@ -1,7 +1,7 @@
 name: Release to Dockerhub
 on:
   push:
-    branches: [master, dev]
+    branches: [master]
     paths-ignore:
       - '**.md'
       - '.github/'
