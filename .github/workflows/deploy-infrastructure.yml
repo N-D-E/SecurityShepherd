@@ -24,7 +24,7 @@ jobs:
           az deployment group validate \
           --resource-group ${{ secrets.AZURE_RGname }} \
           --template-file infrastructure/azuredeploy.json \
-          --parameters infrastructure/@azuredeploy.parameters.json
+          --parameters infrastructure/azuredeploy.parameters.json
 
   deploy-infrastructure:
     name: Deploy ARM Template
