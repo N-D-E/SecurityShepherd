@@ -10,11 +10,11 @@ jobs:
     steps:
       # 1. Checkout the repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.1
 
       # 2. Log in to Azure using the Azure login action
       - name: Azure Login
-        uses: azure/login@v2.2
+        uses: azure/login@v2.2.0
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }} # Use Azure credentials stored in secrets
 
