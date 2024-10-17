@@ -23,7 +23,7 @@ jobs:
         run: |
           az deployment group validate \
           --resource-group ${{ secrets.AZURE_RGname }} \
-          --template-file infrastructue/azuredeploy.json \
+          --template-file infrastructure/azuredeploy.json \
           --parameters infrastructure/@azuredeploy.parameters.json
 
   deploy-infrastructure:
