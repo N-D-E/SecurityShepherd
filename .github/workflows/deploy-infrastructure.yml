@@ -1,33 +1,78 @@
 name: Deploy Azure Infrastructure
 
 on:
-  workflow_dispatch:  # Allows this workflow to be run manually from the GitHub Actions UI
+  workflow_dispatch: # Allows this workflow to be run manually from the GitHub Actions UI
 
 jobs:
-  deploy-to-infrastructure:
+  validate:
+    name: Validate ARM Template
     runs-on: ubuntu-latest
-
     steps:
-    # 1. Checkout the repository
-    - name: Checkout code
-      uses: actions/checkout@v4
+      # 1. Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    # 2. Log in to Azure using the Azure login action
-    - name: Azure Login
-      uses: azure/login@v2.2
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}  # Use Azure credentials stored in secrets  
+      # 2. Log in to Azure using the Azure login action
+      - name: Azure Login
+        uses: azure/login@v2.2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }} # Use Azure credentials stored in secrets
 
-    # 3. Deploy ARM Template to Azure
-    - name: Deploy ARM Template
-      run: |
-        az deployment group create \
+      # 3. Validate template
+      - name: Validate ARM Template
+        run: |
+          az deployment group validate \
           --resource-group ${{ secrets.AZURE_RGname }} \
           --template-file infrastructue/azuredeploy.json \
-          --parameters infrastructure/@azuredeploy.parameters.json \
-          --verbose
+          --parameters infrastructure/@azuredeploy.parameters.json
 
-    # 4. Optionally - Verify deployment or perform post-deployment steps
-    - name: Verify Deployment
-      run: |
-        echo "Deployment completed"
+  deploy-infrastructure:
+    name: Deploy ARM Template
+    runs-on: ubuntu-latest
+    needs: validate
+    if: success()
+
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Log in to Azure using the Azure login action
+      - name: Azure Login
+        uses: azure/login@v2.2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }} # Use Azure credentials stored in secrets
+
+      # 3. Deploy ARM Template to Azure
+      - name: Deploy ARM Template
+        run: |
+          az deployment group create \
+            --name SecurityShepherdDeployment \
+            --resource-group ${{ secrets.AZURE_RGname }} \
+            --template-file infrastructue/azuredeploy.json \
+            --parameters infrastructure/@azuredeploy.parameters.json \
+            --verbose
+
+      # 4. Verify deployment
+      - name: Poll for Deployment Status
+        run: |
+          STATUS="Running"
+          while [[ "$STATUS" == "Running" || "$STATUS" == "Accepted" ]]; do
+            echo "Checking deployment status..."
+            STATUS=$(az deployment group show \
+              --name MyDeployment2024 \
+              --resource-group <your-resource-group> \
+              --query "properties.provisioningState" \
+              -o tsv)
+            echo "Current status: $STATUS"
+            if [[ "$STATUS" == "Succeeded" ]]; then
+              echo "Deployment succeeded."
+              exit 0
+            elif [[ "$STATUS" == "Failed" ]]; then
+              echo "Deployment failed."
+              exit 1
+            else
+              echo "Deployment in progress... checking again in 30 seconds."
+              sleep 30
+            fi
+          done
